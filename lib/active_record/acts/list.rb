@@ -66,6 +66,14 @@ module ActiveRecord
               '#{configuration[:column]}'
             end
 
+            def locking_set
+              if locking_enabled?
+                ', #{locking_column} = (#{locking_column} + 1)'
+              else
+                ''
+              end
+            end
+
             #{scope_condition_method}
 
             before_destroy :decrement_positions_on_lower_items
@@ -216,7 +224,7 @@ module ActiveRecord
           # This has the effect of moving all the higher items up one.
           def decrement_positions_on_higher_items(position)
             acts_as_list_class.update_all(
-              "#{position_column} = (#{position_column} - 1)", "#{scope_condition} AND #{position_column} <= #{position}"
+              "#{position_column} = (#{position_column} - 1) #{locking_set}", "#{scope_condition} AND #{position_column} <= #{position}"
             )
           end
 
@@ -224,7 +232,7 @@ module ActiveRecord
           def decrement_positions_on_lower_items
             return unless in_list?
             acts_as_list_class.update_all(
-              "#{position_column} = (#{position_column} - 1)", "#{scope_condition} AND #{position_column} > #{send(position_column).to_i}"
+              "#{position_column} = (#{position_column} - 1) #{locking_set}", "#{scope_condition} AND #{position_column} > #{send(position_column).to_i}"
             )
           end
 
@@ -232,21 +240,21 @@ module ActiveRecord
           def increment_positions_on_higher_items
             return unless in_list?
             acts_as_list_class.update_all(
-              "#{position_column} = (#{position_column} + 1)", "#{scope_condition} AND #{position_column} < #{send(position_column).to_i}"
+              "#{position_column} = (#{position_column} + 1) #{locking_set}", "#{scope_condition} AND #{position_column} < #{send(position_column).to_i}"
             )
           end
 
           # This has the effect of moving all the lower items down one.
           def increment_positions_on_lower_items(position)
             acts_as_list_class.update_all(
-              "#{position_column} = (#{position_column} + 1)", "#{scope_condition} AND #{position_column} >= #{position}"
+              "#{position_column} = (#{position_column} + 1) #{locking_set}", "#{scope_condition} AND #{position_column} >= #{position}"
            )
           end
 
           # Increments position (<tt>position_column</tt>) of all items in the list.
           def increment_positions_on_all_items
             acts_as_list_class.update_all(
-              "#{position_column} = (#{position_column} + 1)",  "#{scope_condition}"
+              "#{position_column} = (#{position_column} + 1) #{locking_set}",  "#{scope_condition}"
             )
           end
 
